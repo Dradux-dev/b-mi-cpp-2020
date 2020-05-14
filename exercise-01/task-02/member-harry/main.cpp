@@ -1,13 +1,15 @@
-#include "vec3f.h"
 #include <iostream>
 #include <assert.h>
+#include "vec.h"
+
 using namespace my;
 int main(int argc, char* argv) {
 
-	Vec3 foo(1, 2, 3);
-	Vec3 faa(1, 2, 3);
+	int a = 1;
+	int b = 2;
+	Vec<int, 2> f(a,b);
 
-	std::cout << foo[1];
+	std::cout << f[1];
 
 
 	return 0;
