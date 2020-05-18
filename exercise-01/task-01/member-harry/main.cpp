@@ -1,14 +1,12 @@
 #include "vec3f.h"
 #include <iostream>
 #include <assert.h>
+#include "test11.h"
 using namespace my;
-int main(int argc, char* argv) {
+int main(int argc, char** argv) {
 
-	Vec3 foo(1, 2, 3);
-	Vec3 faa(1, 2, 3);
-
-	std::cout << foo[1];
-
+	static_assert(sizeof(Vec3f) == 3*sizeof(float));
+	test_Vec3f();
 
 	return 0;
 }

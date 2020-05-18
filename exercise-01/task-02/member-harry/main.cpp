@@ -1,16 +1,15 @@
+#include "vec.h"
 #include <iostream>
 #include <assert.h>
-#include "vec.h"
-
+#include "test11.h"
+#include "test.h"
 using namespace my;
-int main(int argc, char* argv) {
+int main(int , char** ) {
 
-	int a = 1;
-	int b = 2;
-	Vec<int, 2> f(a,b);
-
-	std::cout << f[1];
-
+	static_assert(sizeof(Vec<float,3>) == 3*sizeof(float));
+	test_Vec3f();
+	test_Vec<int,2>();
+	test_Vec<double,4>();
 
 	return 0;
 }
