@@ -15,7 +15,7 @@ namespace my {
 	public:
 		inline Vec(){
 			static_assert (N>=1);
-			static_assert(sizeof(*this) == N*sizeof(T), "Fehlerhafte Größe!");
+			static_assert(sizeof(*this) == N*sizeof(T));
 			std::fill(components.begin(),components.end(),T());
 		}
 		Vec(const Vec& other)  = default;

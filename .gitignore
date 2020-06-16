@@ -16,4 +16,6 @@ build/*
 *.files
 *.includes
 *.config
-
+**.autosave
+**/build-*/
+**.zip
