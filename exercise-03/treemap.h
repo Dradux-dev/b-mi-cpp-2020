@@ -88,8 +88,9 @@ public:
 
         // construct iterator referencing a speciic node
         // - only treemap shall be allowed to do so
-        iterator(std::shared_ptr<node> node = std::shared_ptr<typename treemap::node>())
-          : current(node)
+        iterator(const treemap& map, std::shared_ptr<node> node = std::shared_ptr<typename treemap::node>())
+          : map(map),
+            current(node)
         {}
     public:
 
@@ -156,7 +157,7 @@ public:
         {
           std::shared_ptr<node> p = current.lock();
           if (!p) {
-            current = std::shared_ptr<node>();
+            current = FindLast(map.root);
             return *this;
           }
 
@@ -180,6 +181,24 @@ public:
         }
 
       protected:
+        static std::shared_ptr<node> FindLast(std::shared_ptr<node> start) {
+          if (!start) {
+            return std::shared_ptr<node>();
+          }
+
+          std::shared_ptr<node> p = start;
+          while (p->right || p->left) {
+            if(p->right) {
+              p = p->right;
+            }
+            else {
+              p = p->left;
+            }
+          }
+
+          return p;
+        }
+
         std::shared_ptr<node> find_next(std::shared_ptr<node> p) {
           std::shared_ptr<node> parent = p->parent.lock();
           if (!parent) {
@@ -211,7 +230,183 @@ public:
       private:
         // non-owning reference to the actual node
         std::weak_ptr<node> current;
+        const treemap& map;
     }; // class iterator
+
+    // ordered iterator: references a node within the tree
+    class ordered_iterator {
+
+    protected:
+
+        // treemap is a friend, can call protected constructor
+        friend class treemap;
+
+        // construct iterator referencing a speciic node
+        // - only treemap shall be allowed to do so
+        ordered_iterator(const treemap& map, std::shared_ptr<node> node = std::shared_ptr<typename treemap::node>())
+          : map(map),
+            current(node)
+        {}
+    public:
+
+        // access data of referenced map element (node)
+        value_type& operator*()
+        {
+          std::shared_ptr<node> node = current.lock();
+
+          // will crash with SIGSEV on misuse (for example calling for end())
+          return node->data;
+        }
+
+        value_type* operator->()
+        {
+          std::shared_ptr<node> node = current.lock();
+          if (!node) {
+            return nullptr;
+          }
+
+          return &node->data;
+        }
+
+        // two iterators are equal if they point to the same node
+        bool operator==(const ordered_iterator& it) const
+        {
+            return current.lock() == it.current.lock();
+        }
+
+        bool operator!=(const ordered_iterator& it) const
+        {
+            return !(*this == it);
+        }
+
+        operator bool() const {
+          return !current.expired();
+        }
+
+        // next element in map, pre-increment
+        // note: must modify self!
+        ordered_iterator& operator++()
+        {
+          std::shared_ptr<node> p = current.lock();
+          if (!p) {
+            current = std::shared_ptr<node>();
+            return *this;
+          }
+
+          std::shared_ptr<node> parent = p->parent.lock();
+          if (p->right) {
+            current = FindFirst(p->right);
+          }
+          else if (parent && parent->left == p) {
+            current = parent;
+          }
+          else {
+            while(parent && (!parent->right || parent->right == p)) {
+              p = parent;
+              parent = p->parent.lock();
+            }
+
+            if (!parent) {
+              current = std::shared_ptr<node>();
+            }
+            else {
+              current = parent->right;
+            }
+          }
+
+          return *this;
+        }
+
+        // prev element in map, pre-decrement
+        // note: must modify self!
+        ordered_iterator& operator--()
+        {
+          std::shared_ptr<node> p = current.lock();
+          if (!p) {
+            current = FindLast(map.root);
+            return *this;
+          }
+
+          if (p->left) {
+            current = FindLast(p->left);
+            return *this;
+          }
+
+          std::shared_ptr<node> parent = p->parent.lock();
+          if (!parent) {
+            current = std::shared_ptr<node>();
+            return *this;
+          }
+
+          if (parent && p == parent->right) {
+            current = parent;
+            return *this;
+          }
+
+          while(parent && (!parent->left || parent->left == p)) {
+            p = parent;
+            parent = p->parent.lock();
+          }
+
+          if (!p) {
+            current = std::shared_ptr<node>();
+          }
+          else {
+            current = p;
+          }
+
+          return *this;
+        }
+
+        static std::shared_ptr<node> FindFirst(std::shared_ptr<node> start) {
+          if (!start) {
+            return std::shared_ptr<node>();
+          }
+
+          std::shared_ptr<node> p = start;
+          while(p->left) {
+            p = p->left;
+          }
+
+          return p;
+        }
+
+        static std::shared_ptr<node> FindLast(std::shared_ptr<node> start) {
+          if (!start) {
+            return std::shared_ptr<node>();
+          }
+
+          std::shared_ptr<node> p = start;
+          while (p->right) {
+            p = p->right;
+          }
+
+          return p;
+        }
+      private:
+        // non-owning reference to the actual node
+        std::weak_ptr<node> current;
+        const treemap& map;
+    }; // class iterator
+
+    struct _ordered {
+      public:
+        explicit _ordered(treemap& map)
+          : map(map)
+        {}
+
+        _ordered(const _ordered&) = default;
+
+        ordered_iterator begin() {
+          return map.obegin();
+        }
+
+        ordered_iterator end() {
+          return map.oend();
+        }
+      private:
+        treemap& map;
+    };
 
 
     // used for copy&move
@@ -255,8 +450,16 @@ public:
     // iterator referencing first element (node) in map
     iterator begin();
 
+    // iterator referencing first element (node) in ordered map
+    ordered_iterator obegin();
+
     // iterator referencing no element (node) in map
     iterator end() const noexcept;
+
+    // iterator referencing no element (node) in ordered map
+    ordered_iterator oend() const noexcept;
+
+    _ordered ordered();
 
     // add a new element into the tree
     // returns pair, consisting of:
@@ -275,26 +478,31 @@ public:
     // find element with specific key. returns end() if not found.
     iterator find(const K&) const;
 
+    // Tries to eliminate ugly chains
+    void optimize();
+
+    void enableOptimization();
+    void disableOptimization();
+
   private:
     iterator create(const K&, const T&);
     std::pair<iterator, bool> get(const K&);
 
   protected:
-    std::shared_ptr<node> root;
-    std::size_t nodeCount;
-    std::less<K> compare;
+    std::shared_ptr<node> root = std::shared_ptr<node>();
+    std::size_t nodeCount  = 0;
+    std::less<K> compare = std::less<K>();
+    bool useOptimization = false;
 };
 
 template<typename K, typename T>
-treemap<K,T>::treemap()
-  : root(std::shared_ptr<node>()),
-    nodeCount(0)
-{}
+treemap<K,T>::treemap() {}
 
 template<typename K, typename T>
 void treemap<K,T>::clear()
 {
   root = nullptr;
+  nodeCount = 0;
 }
 
 // random read-only access to value by key
@@ -327,8 +535,6 @@ template<typename K, typename T>
 // move ctor
 template<typename K, typename T>
 treemap<K,T>::treemap(treemap<K,T>&& other)
-  : root(std::shared_ptr<node>()),
-    nodeCount(0)
 {
     root = other.root;
     nodeCount = other.nodeCount;
@@ -340,10 +546,8 @@ treemap<K,T>::treemap(treemap<K,T>&& other)
 // deep copy ctor
 template<typename K, typename T>
 treemap<K,T>::treemap(const treemap<K,T>& other)
-  : root(std::shared_ptr<node>()),
-    nodeCount(0)
 {
-  for (iterator it = iterator(other.root); it != other.end(); ++it) {
+  for (iterator it = iterator(other, other.root); it != other.end(); ++it) {
     std::pair<K,T> element = *it;
     insert(element.first, T(element.second));
   }
@@ -365,17 +569,35 @@ treemap<K,T>& treemap<K,T>::operator=(treemap<K,T> t)
 
 // iterator referencing first element (node) in map
 template<typename K, typename T>
-typename treemap<K,T>::iterator
-treemap<K,T>::begin()
+typename treemap<K,T>::iterator treemap<K,T>::begin()
 {
-    return iterator(root);
+    return iterator(*this, root);
+}
+
+// iterator referencing first element (node) in map
+template<typename K, typename T>
+typename treemap<K,T>::ordered_iterator treemap<K,T>::obegin()
+{
+    return ordered_iterator(*this, ordered_iterator::FindFirst(root));
 }
 
 // iterator referencing no element (node) in map
 template<typename K, typename T>
 typename treemap<K,T>::iterator treemap<K,T>::end() const noexcept
 {
-    return iterator();
+    return iterator(*this);
+}
+
+// iterator referencing no element (node) in ordered map
+template<typename K, typename T>
+typename treemap<K,T>::ordered_iterator treemap<K,T>::oend() const noexcept
+{
+    return ordered_iterator(*this);
+}
+
+template<typename K, typename T>
+typename treemap<K,T>::_ordered treemap<K,T>::ordered() {
+  return _ordered(*this);
 }
 
 // add a new element into the tree
@@ -426,7 +648,7 @@ treemap<K,T>::find(const K& key) const
     return end();
   }
 
-  return iterator(current);
+  return iterator(*this, current);
 }
 
 // how often is the element contained in the map?
@@ -440,7 +662,8 @@ template<typename K, typename T>
 typename treemap<K,T>::iterator treemap<K,T>::create(const K& key, const T& value) {
   if (!root) {
     root = std::make_shared<node>(std::make_pair(key, value));
-    return iterator(root);
+    ++nodeCount;
+    return iterator(*this, root);
   }
 
   std::shared_ptr<node> current = root;
@@ -456,7 +679,12 @@ typename treemap<K,T>::iterator treemap<K,T>::create(const K& key, const T& valu
         current->left = std::make_shared<node>(std::make_pair(key, value));
         current->left->parent = current;
         ++nodeCount;
-        return iterator(current->left);
+
+        iterator result = iterator(*this, current->left);
+        if (useOptimization) {
+          optimize();
+        }
+        return result;
       }
 
       current = current->left;
@@ -467,7 +695,12 @@ typename treemap<K,T>::iterator treemap<K,T>::create(const K& key, const T& valu
         current->right = std::make_shared<node>(std::make_pair(key, value));
         current->right->parent = current;
         ++nodeCount;
-        return iterator(current->right);
+
+        iterator result = iterator(*this, current->right);
+        if (useOptimization) {
+          optimize();
+        }
+        return result;
       }
 
       current = current->right;
@@ -485,6 +718,93 @@ std::pair<typename treemap<K,T>::iterator, bool> treemap<K,T>::get(const K& key)
   }
 
   return std::make_pair(create(key, T()), true);
+}
+
+template<typename K, typename T>
+void treemap<K,T>::optimize() {
+  bool found = false;
+
+  do {
+    found = false;
+    for(iterator it = begin(); it != end(); ++it) {
+      std::shared_ptr<node> current = it.current.lock();
+      std::shared_ptr<node> parent = (current ? current->parent.lock() : std::shared_ptr<node>());
+      std::shared_ptr<node> grandparent = (parent ? parent->parent.lock() : std::shared_ptr<node>());
+
+      if (!current || !parent || !grandparent)
+        continue;
+
+      // Left Chain
+      if (!parent->right && !grandparent->right) {
+        // Reorder!
+        std::shared_ptr<node> grandgrandparent = grandparent->parent.lock();
+        parent->parent = grandparent->parent;
+        parent->right = grandparent;
+        grandparent->parent = parent;
+        grandparent->left = nullptr;
+
+        if (grandgrandparent) {
+          if (grandgrandparent->left == grandparent) {
+            grandgrandparent->left = parent;
+          }
+          else if (grandgrandparent->right == grandparent) {
+            grandgrandparent->right = parent;
+          }
+        }
+
+        if (grandparent == root) {
+          root = parent;
+        }
+
+        found = true;
+        break;
+      }
+
+      // Right Chain
+      if (!parent->left && !grandparent->left) {
+        // Reorder!
+        std::shared_ptr<node> grandgrandparent = grandparent->parent.lock();
+        parent->parent = grandparent->parent;
+        parent->left = grandparent;
+        grandparent->parent = parent;
+        grandparent->right = nullptr;
+
+        if (grandgrandparent) {
+          if (grandgrandparent->left == grandparent) {
+            grandgrandparent->left = parent;
+          }
+          else if (grandgrandparent->right == grandparent) {
+            grandgrandparent->right = parent;
+          }
+        }
+
+        if (grandparent == root) {
+          root = parent;
+        }
+
+        found = true;
+        break;
+      }
+    }
+
+    if (found) {
+      static int count = 0;
+      std::stringstream ss;
+      ss << "optimization-" << count << ".dot";
+
+      export_treemap(ss.str(), *this);
+    }
+  } while(found);
+}
+
+template<typename K, typename T>
+void treemap<K,T>::enableOptimization() {
+  useOptimization = true;
+}
+
+template<typename K, typename T>
+void treemap<K,T>::disableOptimization() {
+  useOptimization = false;
 }
 
 } // namespace my
@@ -511,6 +831,10 @@ namespace __private {
   void createNode(std::fstream& file, unsigned int& counter, std::shared_ptr<typename my::treemap<K,T>::node> current) {
     if (!current)
       return;
+
+    if (!current->left && !current->right) {
+      return;
+    }
 
 
     if (!current->left) {

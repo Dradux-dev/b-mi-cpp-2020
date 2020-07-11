@@ -1,0 +1,9 @@
+digraph G {
+	"E" -> "D";
+	"E" -> "G";
+
+	"G" -> "F";
+	node1 [label=""];
+	"G" -> "node1";
+
+}

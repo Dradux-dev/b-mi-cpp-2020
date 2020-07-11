@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <functional>
+#include <map>
 
 #include "assert.h"
 
@@ -27,20 +28,6 @@ to_string(Payload p)
 
 int main()
 {
-  {
-    treemap<string, int> m;
-    m.insert("E", 1);
-    m.insert("D", 2);
-    m.insert("G", 3);
-    m.insert("F", 4);
-
-    for(treemap<string,int>::value_type element : m) {
-      std::cout << element.first << " : " << element.second << std::endl;
-    }
-
-    export_treemap("test.dot", m);
-  }
-
     {
         cout << "1. treemap basics..." << endl;
 
@@ -144,11 +131,43 @@ int main()
         for(auto i=m.begin(); i!=m.end(); ++i)
             cout << "  " << i->first << ": " << i->second << endl;
 
-        assert(m.begin()->first == "Anna");
-        assert((++m.begin())->first == "Hartmut");
+        assert(m.begin()->first == "Hartmut");
+        assert((++m.begin())->first == "Anna");
         assert((++++m.begin())->first == "Helmut");
-        assert((++++++m.begin())->first == "Klaus");
-        assert((++++++++m.begin())->first == "Zebra");
+        assert((++++++m.begin())->first == "Zebra");
+        assert((++++++++m.begin())->first == "Klaus");
+
+        // iterator++, iterator operator*
+        cout << "iterating through list using range-based for loop:" << endl;
+        for(auto i : m)
+            cout << "  " << i.first << ": " << i.second << endl;
+
+        cout << "done." << endl;
+
+    }
+
+    {
+        cout << "5. ordered iterator, ++ ..." << endl;
+
+        treemap<string, int> m;
+
+        m["Hartmut"] = 1;
+        m["Helmut"] = 2;
+        m["Zebra"] = 3;
+        m["Anna"] = 4;
+        m["Klaus"] = 5;
+        assert(m.size() == 5);
+
+        // iterator++, iterator operator->
+        cout << "iterating through list in normal order:" << endl;
+        for(auto i=m.obegin(); i!=m.oend(); ++i)
+            cout << "  " << i->first << ": " << i->second << endl;
+
+        assert(m.obegin()->first == "Anna");
+        assert((++m.obegin())->first == "Hartmut");
+        assert((++++m.obegin())->first == "Helmut");
+        assert((++++++m.obegin())->first == "Klaus");
+        assert((++++++++m.obegin())->first == "Zebra");
 
         // iterator++, iterator operator*
         cout << "iterating through list using range-based for loop:" << endl;
@@ -163,7 +182,7 @@ int main()
     cout << endl;
 
     {
-        cout << "5. iterator, -- ..." << endl;
+        cout << "6. iterator, -- ..." << endl;
 
         treemap<string, int> m;
         m["Hartmut"] = 1;
@@ -177,11 +196,42 @@ int main()
         cout << "iterating through list in reverse order:" << endl;
         // todo
         // write this loop yourself; careful, one can easily screw up this test
-        // auto i = m.end();
+        for(auto it = --m.end(); it != m.begin(); --it) {
+          cout << " " << (*it).first << ": " << (*it).second << endl;
+        }
+        cout << " " << m.begin()->first << ": " << m.begin()->second << endl;
 
         // some bit of automatic testing in addition
-        assert((--m.end())->first == "Zebra");
-        assert((----m.end())->first == "Klaus");
+        assert((--m.end())->first == "Klaus");
+        assert((----m.end())->first == "Zebra");
+
+        cout << "done." << endl;
+
+    }
+
+    {
+        cout << "7. ordered iterator, -- ..." << endl;
+
+        treemap<string, int> m;
+        m["Hartmut"] = 1;
+        m["Helmut"] = 2;
+        m["Zebra"] = 3;
+        m["Anna"] = 4;
+        m["Klaus"] = 5;
+        assert(m.size() == 5);
+
+        // iterator--
+        cout << "iterating through list in reverse order:" << endl;
+        // todo
+        // write this loop yourself; careful, one can easily screw up this test
+        for(auto it = --m.oend(); it != m.obegin(); --it) {
+          cout << " " << (*it).first << ": " << (*it).second << endl;
+        }
+        cout << " " << m.obegin()->first << ": " << m.obegin()->second << endl;
+
+        // some bit of automatic testing in addition
+        assert((--m.oend())->first == "Zebra");
+        assert((----m.oend())->first == "Klaus");
 
         cout << "done." << endl;
 
@@ -191,7 +241,7 @@ int main()
     cout << endl;
 
     {
-        cout << "6. move ..." << endl;
+        cout << "8. move ..." << endl;
         assert(Payload::count() == 0); // just for sanity's sake
 
         treemap<string, Payload> m;
@@ -219,7 +269,7 @@ int main()
     cout << endl;
 
     {
-        cout << "7. deep copy ..." << endl;
+        cout << "9. deep copy ..." << endl;
 
         assert(Payload::count() == 0); // just for sanity's sake
 
@@ -249,6 +299,108 @@ int main()
 
         cout << "done." << endl;
     }
+
+    {
+      cout << "10. Optimize ... ";
+      {
+        treemap<string, Payload> m;
+        m.insert("C", Payload());
+        m.insert("B", Payload());
+        m.insert("A", Payload());
+        export_treemap("optimize-left-pre.dot", m);
+        m.optimize();
+        export_treemap("optimize-left-post.dot", m);
+
+        treemap<string,Payload>::iterator root = m.begin();
+        assert(root->first == "B");
+
+        treemap<string,Payload>::iterator it = root;
+        ++it;
+        assert(it->first == "A");
+
+        ++it;
+        assert(it->first == "C");
+        assert(Payload::count() == 3);
+      }
+
+      {
+        treemap<string, Payload> m;
+        m.insert("A", Payload());
+        m.insert("B", Payload());
+        m.insert("C", Payload());
+        export_treemap("optimize-right-pre.dot", m);
+        m.optimize();
+        export_treemap("optimize-right-post.dot", m);
+
+        treemap<string,Payload>::iterator root = m.begin();
+        assert(root->first == "B");
+
+        treemap<string,Payload>::iterator it = root;
+        ++it;
+        assert(it->first == "A");
+
+        ++it;
+        assert(it->first == "C");
+        assert(Payload::count() == 3);
+      }
+
+      cout << "done" << std::endl;
+    }
+
+    {
+      cout << "11. Task Example...";
+      treemap<string,string> sheetExample;
+      sheetExample.insert("J", "J");
+      sheetExample.insert("F", "F");
+      sheetExample.insert("D", "D");
+      sheetExample.insert("C", "C");
+      sheetExample.insert("G", "G");
+      sheetExample.insert("P", "P");
+      sheetExample.insert("L", "L");
+      sheetExample.insert("N", "N");
+      sheetExample.insert("V", "V");
+      sheetExample.insert("S", "S");
+      sheetExample.insert("Q", "Q");
+      sheetExample.insert("U", "U");
+      sheetExample.insert("X", "X");
+      export_treemap("sheet-example.dot", sheetExample);
+
+      {
+        treemap<string, string> m = sheetExample;
+        m.insert("B", "B");
+        export_treemap("left-chain-pre.dot", m);
+        m.optimize();
+        export_treemap("left-chain-post.dot", m);
+
+        m.insert("Y", "Y");
+        m.insert("Z", "Z");
+        export_treemap("right-chain-pre.dot", m);
+        m.optimize();
+        export_treemap("right-chain-post.dot", m);
+      }
+      cout << "done" << std::endl;
+    }
+
+    {
+      cout << "12. Task Example optimized...";
+      treemap<string,string> sheetExample;
+      sheetExample.enableOptimization();
+      sheetExample.insert("J", "J");
+      sheetExample.insert("F", "F");
+      sheetExample.insert("D", "D");
+      sheetExample.insert("C", "C");
+      sheetExample.insert("G", "G");
+      sheetExample.insert("P", "P");
+      sheetExample.insert("L", "L");
+      sheetExample.insert("N", "N");
+      sheetExample.insert("V", "V");
+      sheetExample.insert("S", "S");
+      sheetExample.insert("Q", "Q");
+      sheetExample.insert("U", "U");
+      sheetExample.insert("X", "X");
+      export_treemap("sheet-example-optimized.dot", sheetExample);
+    }
+
     assert(Payload::count() == 0);
     cout << endl;
 
