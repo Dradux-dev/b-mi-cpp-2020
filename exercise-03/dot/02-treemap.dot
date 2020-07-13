@@ -1,0 +1,10 @@
+digraph G {
+	"Three" -> "Seven";
+	node1 [label=""];
+	"Three" -> "node1";
+
+	"Seven" -> "Eleven";
+	node2 [label=""];
+	"Seven" -> "node2";
+
+}

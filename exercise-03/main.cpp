@@ -50,6 +50,7 @@ int main()
         m.insert("Three", Payload(3,3,3));
         m.insert("Seven", Payload(7,7,7));
         auto [iter_eleven, was_inserted] = m.insert("Eleven", Payload(11,11,11));
+        export_treemap("02-treemap.dot", m);
 
         assert(was_inserted == true);
         assert(iter_eleven->first == "Eleven");
@@ -67,6 +68,7 @@ int main()
 
             auto key = eleven->first;
             auto value = eleven->second;
+            assert(key == "Eleven");
             cout << "found payload Eleven: [ " << key << "," << to_string(value) << " ]" << endl;
 
             // clear()
@@ -91,6 +93,7 @@ int main()
         m["B=1"] = Payload(1,1,1);
         m["A=2"] = Payload(2,2,2);
         m["C=3"] = Payload(3,3,3);
+        export_treemap("03-treemap.dot", m);
 
         // count()
         assert(m.count("A=2") == 1);
@@ -124,6 +127,7 @@ int main()
         m["Zebra"] = 3;
         m["Anna"] = 4;
         m["Klaus"] = 5;
+        export_treemap("04-treemap.dot", m);
         assert(m.size() == 5);
 
         // iterator++, iterator operator->
@@ -156,6 +160,7 @@ int main()
         m["Zebra"] = 3;
         m["Anna"] = 4;
         m["Klaus"] = 5;
+        export_treemap("05-treemap.dot", m);
         assert(m.size() == 5);
 
         // iterator++, iterator operator->
@@ -190,6 +195,7 @@ int main()
         m["Zebra"] = 3;
         m["Anna"] = 4;
         m["Klaus"] = 5;
+        export_treemap("06-treemap.dot", m);
         assert(m.size() == 5);
 
         // iterator--
@@ -217,13 +223,15 @@ int main()
         m["Zebra"] = 3;
         m["Anna"] = 4;
         m["Klaus"] = 5;
+        export_treemap("07-treemap.dot", m);
         assert(m.size() == 5);
 
         // iterator--
         cout << "iterating through list in reverse order:" << endl;
         // todo
         // write this loop yourself; careful, one can easily screw up this test
-        for(auto it = --m.oend(); it != m.obegin(); --it) {
+        for(auto it = --m.oend(); it != m.obegin
+            (); --it) {
           cout << " " << (*it).first << ": " << (*it).second << endl;
         }
         cout << " " << m.obegin()->first << ": " << m.obegin()->second << endl;
@@ -249,6 +257,7 @@ int main()
         m["Zebra"]   = Payload(1,3,1);
         m["Anna"]    = Payload(1,4,1);
         m["Klaus"]   = Payload(1,5,1);
+        export_treemap("08-treemap.dot", m);
         assert(m.size() == 5);
         assert(Payload::count() == 5);
 
@@ -278,6 +287,7 @@ int main()
         m["Zebra"]   = Payload(1,3,1);
         m["Anna"]    = Payload(1,4,1);
         m["Klaus"]   = Payload(1,5,1);
+        export_treemap("09-treemap.dot", m);
         assert(m.size() == 5);
         assert(Payload::count() == 5);
 

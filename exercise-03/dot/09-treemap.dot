@@ -1,0 +1,13 @@
+digraph G {
+	"Hartmut" -> "Anna";
+	"Hartmut" -> "Helmut";
+
+	node1 [label=""];
+	"Helmut" -> "node1";
+	"Helmut" -> "Zebra";
+
+	"Zebra" -> "Klaus";
+	node2 [label=""];
+	"Zebra" -> "node2";
+
+}
