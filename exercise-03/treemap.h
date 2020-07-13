@@ -327,6 +327,11 @@ public:
             return *this;
           }
 
+          if (p == FindFirst(map.root)) {
+            current = std::shared_ptr<node>();
+            return *this;
+          }
+
           if (p->left) {
             current = FindLast(p->left);
             return *this;

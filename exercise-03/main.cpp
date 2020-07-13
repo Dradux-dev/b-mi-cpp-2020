@@ -230,11 +230,9 @@ int main()
         cout << "iterating through list in reverse order:" << endl;
         // todo
         // write this loop yourself; careful, one can easily screw up this test
-        for(auto it = --m.oend(); it != m.obegin
-            (); --it) {
+        for(auto it = --m.oend(); it != m.oend(); --it) {
           cout << " " << (*it).first << ": " << (*it).second << endl;
         }
-        cout << " " << m.obegin()->first << ": " << m.obegin()->second << endl;
 
         // some bit of automatic testing in addition
         assert((--m.oend())->first == "Zebra");
